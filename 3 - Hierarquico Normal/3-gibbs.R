@@ -8,6 +8,8 @@
 ################################################################################
 ################################################################################
 
+library(scales) #Melhora na visualização dos gráficos
+
 # Contexto
 ## Xij|mu_i ~ N(mu_i, 1); i = 1, 2; j = 1, ..., ni
 ## mu_i|theta ~ N(theta, 1); i = 1, 2
@@ -55,10 +57,16 @@ lines(0:B, parametros$mu[,2], type = 'l', col = 'blue')
 legend("topright", c(expression(theta), expression(mu[1]), expression(mu[2])),
        lty = 1, lwd = 2, col = c("black", "red", "blue"), bty = 'n')
 
-par(mfrow = c(1, 3))
-hist(parametros$theta, xlab = expression(theta ~ "|" ~ bold(x)),
-     main = NULL, freq = F)
-hist(parametros$mu[,1], xlab = expression(mu[1] ~ "|" ~ bold(x)),
-     main = NULL, freq = F)
-hist(parametros$mu[,2], xlab = expression(mu[2] ~ "|" ~ bold(x)),
-     main = NULL, freq = F)
+minimo <- min(parametros$theta, parametros$mu)
+maximo <- max(parametros$theta, parametros$mu)
+opacidade <- 0.5
+plot(density(parametros$theta, from = minimo, to = maximo), xlab = "Valores",
+     ylab = "Densidade", main = NA, ylim = c(0,4), lwd = 2,
+     col = alpha("black", .5))
+lines(density(parametros$mu[,1], from = minimo, to = maximo), lwd = 2,
+      col = alpha("red", opacidade))
+lines(density(parametros$mu[,2], from = minimo, to = maximo), lwd = 2,
+      col = alpha("blue", opacidade))
+legend("topleft", c(expression(theta), expression(mu[1]), expression(mu[2])),
+       lty = 1, lwd = 2, col = alpha(c("black", "red", "blue"), opacidade),
+       bty = 'n')
