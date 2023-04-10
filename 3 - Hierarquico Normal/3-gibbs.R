@@ -16,7 +16,7 @@ library(scales) #Melhora na visualização dos gráficos
 ## theta ~ N(0, 1)
 
 # Condicionais completas
-## mu_i|X, theta ~ N[(ni*Xi_barra + theta)/2, 1/2]
+## mu_i|X, theta ~ N[(ni*Xi_barra + theta)/(ni+1), 1/(ni+1)]
 ## theta|mu1, mu2 ~ N[(mu1 + mu2)/3, 1/3]
 
 # Dados
@@ -67,6 +67,8 @@ lines(density(parametros$mu[,1], from = minimo, to = maximo), lwd = 2,
       col = alpha("red", opacidade))
 lines(density(parametros$mu[,2], from = minimo, to = maximo), lwd = 2,
       col = alpha("blue", opacidade))
-legend("topleft", c(expression(theta), expression(mu[1]), expression(mu[2])),
+legend("topleft", c(expression(theta ~ "|" ~ bold(x)),
+                    expression(mu[1] ~ "|" ~ bold(x)),
+                    expression(mu[2] ~ "|" ~ bold(x))),
        lty = 1, lwd = 2, col = alpha(c("black", "red", "blue"), opacidade),
        bty = 'n')
