@@ -43,8 +43,10 @@ Gibbs <- function(B, y, X, nu, v2, a, b, seed = NULL){
     sigma2[i] <- 1/rgamma(1, (n+n_cov)/2 + a,
                          sum(lambda*e2)/2 + sum(beta[i-1,]^2)/(2*v2) + b)
     #beta
-    V <- ginv(t(X)%*%X + diag(1/(v2*sigma2[i]), n_cov))
-    m <- V%*%t(X)%*%y
+    invSig <- diag(lambda/sigma2[i], n)
+    V <- ginv(t(X)%*%invSig%*%X +
+                diag(1/(v2*sigma2[i]), n_cov))
+    m <- V%*%t(X)%*%invSig%*%y
     beta[i,] <- m + t(chol(V))%*%rnorm(n_cov)
   }
   return(list(beta = beta, sigma2 = sigma2, nu = nu))
@@ -101,13 +103,16 @@ MCMC <- function(B, y, X, nu0, v.nu, v2, a, b, seed = NULL){
     lambda <- rgamma(n, (nu[i-1]+1)/2, 1/2*(nu[i-1] + e2/sigma2[i-1]))
     
     #nu (MH)
+    #Gero da distribuição proposta
     nu.prop <- exp(rnorm(1, log(nu[i-1]), sd = sqrt(v.nu)))
+    #Calcular log da aceitação
     log_a <-
       sum(dgamma(lambda, nu.prop/2, nu.prop/2, log = T) -
             dgamma(lambda, nu[i-1]/2, nu[i-1]/2, log = T)) + #log-vero
       priori.nu(nu.prop) - priori.nu(nu[i-1]) + #log-priori
       dnorm(log(nu[i-1]), mean = log(nu.prop), sd = sqrt(v.nu), log = T) -
       dnorm(log(nu.prop), mean = log(nu[i-1]), sd = sqrt(v.nu), log = T) #prop
+    #Aceitação da proposta ou continuidade no valor anterior
     ifelse(log_a >= log(runif(1)),
            c(nu[i] <- nu.prop, aceita <- aceita + 1),
            nu[i] <- nu[i-1])
@@ -115,8 +120,10 @@ MCMC <- function(B, y, X, nu0, v.nu, v2, a, b, seed = NULL){
     sigma2[i] <- 1/rgamma(1, (n+n_cov)/2 + a,
                           sum(lambda*e2)/2 + sum(beta[i-1,]^2)/(2*v2) + b)
     #beta (Gibbs)
-    V <- ginv(t(X)%*%X + diag(1/(v2*sigma2[i]), n_cov))
-    m <- V%*%t(X)%*%y
+    invSig <- diag(lambda/sigma2[i], n)
+    V <- ginv(t(X)%*%invSig%*%X +
+                diag(1/(v2*sigma2[i]), n_cov))
+    m <- V%*%t(X)%*%invSig%*%y
     beta[i,] <- m + t(chol(V))%*%rnorm(n_cov)
   }
   return(list(beta = beta, sigma2 = sigma2, nu = nu, aceita = aceita/B))
@@ -134,7 +141,7 @@ for(i in 1:3){
 plot(cadeias$sigma2, type = 'l', xlab = expression(sigma^2))
 abline(h = sigma2, col = 'red', lty = 2)
 
-par(mfrow = c(1, 1), mar = c(4,4,2,2))
+par(mfrow = c(1, 1), mar = c(4,4,3,2))
 plot(cadeias$nu, type = 'l', xlab = expression(nu))
 abline(h = nu, col = 'red', lty = 2)
 
@@ -143,7 +150,8 @@ abline(h = nu, col = 'red', lty = 2)
 ##################        Parte 3: outros diagnósticos        ##################
 ################################################################################
 
-acf(cadeias$nu[-(1:7000)], lag = 150)
+#Autocorrelação
+acf(cadeias$nu, lag = 180)
 
 MCMC2 <- function(B, y, X, nu0, v.nu, v2, a, b, seed = NULL){
   n <- length(y) #Tamanho da amostra
@@ -181,8 +189,10 @@ MCMC2 <- function(B, y, X, nu0, v.nu, v2, a, b, seed = NULL){
     sigma2[i] <- 1/rgamma(1, (n+n_cov)/2 + a,
                           sum(lambda*e^2)/2 + sum(beta[i-1,]^2)/(2*v2) + b)
     #beta (Gibbs)
-    V <- ginv(t(X)%*%X + diag(1/(v2*sigma2[i]), n_cov))
-    m <- V%*%t(X)%*%y
+    invSig <- diag(lambda/sigma2[i], n)
+    V <- ginv(t(X)%*%invSig%*%X +
+                diag(1/(v2*sigma2[i]), n_cov))
+    m <- V%*%t(X)%*%invSig%*%y
     beta[i,] <- m + t(chol(V))%*%rnorm(n_cov)
   }
   return(list(beta = beta, sigma2 = sigma2, nu = nu, aceita = aceita/B))
@@ -195,22 +205,30 @@ cadeias$aceita
 plot(cadeias$nu, type = 'l', xlab = expression(nu))
 abline(h = nu, col = 'red', lty = 2)
 
-acf(cadeias$nu, lag = 150)
-acf(cadeias$nu, lag = 30)
+acf(cadeias$nu, lag = 180)
+acf(cadeias$nu, lag = 22)
 
-acf(cadeias$beta[,1], lag = 30)
-acf(cadeias$beta[,2], lag = 30)
-acf(cadeias$beta[,3], lag = 30)
-acf(cadeias$sigma2, lag = 30)
+
+acf(cadeias$beta[,1], lag = 22)
+acf(cadeias$beta[,2], lag = 22)
+acf(cadeias$beta[,3], lag = 22)
+acf(cadeias$sigma2, lag = 22)
 
 library(coda)
 matMCMC <- cbind(cadeias$beta, cadeias$sigma2, cadeias$nu)
 colnames(matMCMC) <- c("beta0", "beta1", "beta2", "sigma2", "nu")
-matMCMC <- mcmc(data = matMCMC, start = 3000, thin = 30)
+matMCMC <- mcmc(data = matMCMC, start = 1000, thin = 22)
+#ACF de novo
 acfplot(matMCMC)
+#Correlação dos parâmetros
 crosscorr.plot(matMCMC)
+#Densidade das posterioris
 densplot(matMCMC)
+#Número de simulações para garantir estimativa pontual estável
 effectiveSize(matMCMC)
+#Diagnóstico de convergência
 geweke.plot(matMCMC)
+#Intervalos HPD
 HPDinterval(matMCMC, prob = 0.95)
+#Taxa de rejeição
 rejectionRate(matMCMC)
